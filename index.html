@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SAMI File Editor</title>
+</head>
+<body>
+    <h1>SAMI File Editor</h1>
+    <input type="file" id="fileInput"><br><br>
+    <label for="deleteTimestamp">Delete Syncs Until (milliseconds): </label>
+    <input type="number" id="deleteTimestamp" placeholder="5000"><br><br>
+    
+    <h2>Replace Text</h2>
+    <label for="replaceTarget">Target Text: </label>
+    <input type="text" id="replaceTarget" placeholder="Target Text"><br><br>
+    <label for="replaceWith">Replace With: </label>
+    <input type="text" id="replaceWith" placeholder="Replace With"><br><br>
+    
+    <button onclick="processFile()">Process File</button><br><br>
+    <textarea id="samiOutput" rows="20" cols="100" placeholder="Edited SAMI content will appear here"></textarea><br><br>
+    <button id="downloadButton" style="display:none;" onclick="downloadFile()">Download Edited File</button>
+
+    <script>
+        function processFile() {
+            const fileInput = document.getElementById('fileInput');
+            const deleteTimestamp = document.getElementById('deleteTimestamp').value;
+            const replaceTarget = document.getElementById('replaceTarget').value;
+            const replaceWith = document.getElementById('replaceWith').value;
+
+            if (fileInput.files.length === 0) {
+                alert('Please select a file.');
+                return;
+            }
+
+            const file = fileInput.files[0];
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                let fileContent = e.target.result;
+                fileContent = deleteSamiContent(fileContent, deleteTimestamp);
+                fileContent = replaceText(fileContent, replaceTarget, replaceWith);
+                document.getElementById('samiOutput').value = fileContent;
+                document.getElementById('downloadButton').style.display = 'inline-block';
+            };
+            reader.readAsText(file);
+        }
+
+        function deleteSamiContent(content, deleteUntil) {
+            const deleteMs = parseInt(deleteUntil);
+            const lines = content.split('\n');
+            let outputLines = [];
+            let skip = false;
+
+            for (let line of lines) {
+                const timestampMatch = line.match(/<SYNC Start=(\d+)>/);
+                if (timestampMatch) {
+                    const timestamp = parseInt(timestampMatch[1]);
+                    if (timestamp <= deleteMs) {
+                        skip = true;
+                    } else {
+                        skip = false;
+                    }
+                }
+                if (!skip) {
+                    outputLines.push(line);
+                }
+            }
+
+            return outputLines.join('\n');
+        }
+
+        function replaceText(content, target, replacement) {
+            if (target === "") return content;
+            const regex = new RegExp(target, 'g');
+            return content.replace(regex, replacement);
+        }
+
+        function downloadFile() {
+            const content = document.getElementById('samiOutput').value;
+            const blob = new Blob([content], { type: 'text/smi' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'edited_sami.smi';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+    </script>
+</body>
+</html>
