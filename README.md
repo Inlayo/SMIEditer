@@ -1,1 +1,1 @@
-smiediter.pages.dev
+https://smiediter.pages.dev
